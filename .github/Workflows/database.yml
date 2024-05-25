@@ -1,0 +1,41 @@
+name: Setup MySQL Database
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  setup-database:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:latest
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+        env:
+          MYSQL_ROOT_PASSWORD: root_password
+          MYSQL_DATABASE: mydatabase
+          MYSQL_USER: myuser
+          MYSQL_PASSWORD: mypassword
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Wait for MySQL to be healthy
+        run: |
+          docker ps
+          until [ "`docker inspect -f {{.State.Health.Status}} $(docker ps -q --filter ancestor=mysql:latest)`" == "healthy" ]; do
+            sleep 1;
+          done
+
+      - name: Run MySQL command
+        run: |
+          docker exec $(docker ps -q --filter ancestor=mysql:latest) mysql -umyuser -pmypassword -e "SHOW DATABASES;"
